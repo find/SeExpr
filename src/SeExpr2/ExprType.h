@@ -69,6 +69,8 @@ class ExprType {
         assert(_type == tFP || _n == 1);
     }
 
+    constexpr ExprType& operator=(ExprType const& that) = default;
+
     /// Returns true if this and other do not match on type and dimension
     bool operator!=(const ExprType& other) const { return !(*this == other); }
 

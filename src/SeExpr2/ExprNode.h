@@ -246,9 +246,9 @@ class ExprModuleNode : public ExprNode {
   public:
     ExprModuleNode(const Expression* expr) : ExprNode(expr) {}
 
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
-    virtual int buildInterpreter(Interpreter* interpreter) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
+    virtual int buildInterpreter(Interpreter* interpreter) const override;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
 };
 
 /// Node that contains prototype of function
@@ -260,7 +260,7 @@ class ExprPrototypeNode : public ExprNode {
     ExprPrototypeNode(const Expression* expr, const std::string& name)
         : ExprNode(expr), _name(name), _retTypeSet(false), _argTypes() {}
 
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
 
     void addArgTypes(ExprNode* surrogate);
     void addArgs(ExprNode* surrogate);
@@ -288,8 +288,8 @@ class ExprPrototypeNode : public ExprNode {
     const std::string& name() const { return _name; }
 
     /// Build the interpreter
-    int buildInterpreter(Interpreter* interpreter) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    int buildInterpreter(Interpreter* interpreter) const override;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
     /// Return op for interpreter
     int interpreterOps(int c) const { return _interpreterOps.at(c); }
 
@@ -310,17 +310,17 @@ class ExprLocalFunctionNode : public ExprNode {
         : ExprNode(expr, prototype, block) {}
 
     /// Preps the definition of this site
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
     /// Preps a caller (i.e. we use callerNode to check arguments)
     virtual ExprType prep(ExprFuncNode* callerNode, bool scalarWanted, ExprVarEnvBuilder& envBuilder) const;
     /// TODO: Accessor for prototype (probably not needed when we use prep right)
     const ExprPrototypeNode* prototype() const { return static_cast<const ExprPrototypeNode*>(child(0)); }
 
     /// Build the interpreter
-    int buildInterpreter(Interpreter* interpreter) const;
+    int buildInterpreter(Interpreter* interpreter) const override;
     /// Build interpreter if we are called
     int buildInterpreterForCall(const ExprFuncNode* callerNode, Interpreter* interpreter) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
 
   private:
     mutable int _procedurePC;
@@ -332,9 +332,9 @@ class ExprBlockNode : public ExprNode {
   public:
     ExprBlockNode(const Expression* expr, ExprNode* a, ExprNode* b) : ExprNode(expr, a, b) {}
 
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
-    virtual int buildInterpreter(Interpreter* interpreter) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
+    virtual int buildInterpreter(Interpreter* interpreter) const override;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
 };
 
 /// Node that computes local variables before evaluating expression
@@ -343,9 +343,9 @@ class ExprIfThenElseNode : public ExprNode {
     ExprIfThenElseNode(const Expression* expr, ExprNode* a, ExprNode* b, ExprNode* c)
         : ExprNode(expr, a, b, c), _varEnv(nullptr), _varEnvMergeIndex(0) {}
 
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
-    virtual int buildInterpreter(Interpreter* interpreter) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
+    virtual int buildInterpreter(Interpreter* interpreter) const override;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
 
     ExprVarEnv* _varEnv;
     size_t _varEnvMergeIndex;
@@ -357,10 +357,10 @@ class ExprAssignNode : public ExprNode {
     ExprAssignNode(const Expression* expr, const char* name, ExprNode* e)
         : ExprNode(expr, e), _name(name), _localVar(0) {}
 
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
-    virtual int buildInterpreter(Interpreter* interpreter) const;
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
+    virtual int buildInterpreter(Interpreter* interpreter) const override;
     // virtual void eval(Vec3d& result) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
 
     const std::string& name() const {
         return _name;
@@ -382,9 +382,9 @@ class ExprVecNode : public ExprNode {
   public:
     ExprVecNode(const Expression* expr) : ExprNode(expr) {}
 
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
-    virtual int buildInterpreter(Interpreter* interpreter) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
+    virtual int buildInterpreter(Interpreter* interpreter) const override;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
 
     Vec3d value() const;
 };
@@ -395,9 +395,9 @@ class ExprUnaryOpNode : public ExprNode {
     //! Construct with specific op ('!x' is logical negation, '~x' is 1-x, '-x' is -x)
     ExprUnaryOpNode(const Expression* expr, ExprNode* a, char op) : ExprNode(expr, a), _op(op) {}
 
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
-    virtual int buildInterpreter(Interpreter* interpreter) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
+    virtual int buildInterpreter(Interpreter* interpreter) const override;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
 
     char _op;
 };
@@ -407,9 +407,9 @@ class ExprCondNode : public ExprNode {
   public:
     ExprCondNode(const Expression* expr, ExprNode* a, ExprNode* b, ExprNode* c) : ExprNode(expr, a, b, c) {}
 
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
-    virtual int buildInterpreter(Interpreter* interpreter) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
+    virtual int buildInterpreter(Interpreter* interpreter) const override;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
 };
 
 /// Node that evaluates a component of a vector
@@ -417,9 +417,9 @@ class ExprSubscriptNode : public ExprNode {
   public:
     ExprSubscriptNode(const Expression* expr, ExprNode* a, ExprNode* b) : ExprNode(expr, a, b) {}
 
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
-    virtual int buildInterpreter(Interpreter* interpreter) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
+    virtual int buildInterpreter(Interpreter* interpreter) const override;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
 };
 
 /// Node that implements a numeric/string comparison
@@ -427,9 +427,9 @@ class ExprCompareEqNode : public ExprNode {
   public:
     ExprCompareEqNode(const Expression* expr, ExprNode* a, ExprNode* b, char op) : ExprNode(expr, a, b), _op(op) {}
 
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
-    virtual int buildInterpreter(Interpreter* interpreter) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
+    virtual int buildInterpreter(Interpreter* interpreter) const override;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
 
     char _op;
 };
@@ -439,9 +439,9 @@ class ExprCompareNode : public ExprNode {
   public:
     ExprCompareNode(const Expression* expr, ExprNode* a, ExprNode* b, char op) : ExprNode(expr, a, b), _op(op) {}
 
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
-    virtual int buildInterpreter(Interpreter* interpreter) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
+    virtual int buildInterpreter(Interpreter* interpreter) const override;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
 
     //! _op '<' less-than, 'l' less-than-eq, '>' greater-than, 'g' greater-than-eq
     char _op;
@@ -453,9 +453,9 @@ class ExprBinaryOpNode : public ExprNode {
     ExprBinaryOpNode(const Expression* expr, ExprNode* a, ExprNode* b, char op) : ExprNode(expr, a, b), _op(op), _out(0) {}
     virtual ~ExprBinaryOpNode() { free(_out); }
 
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
-    virtual int buildInterpreter(Interpreter* interpreter) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
+    virtual int buildInterpreter(Interpreter* interpreter) const override;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
 
     char _op;
     char* _out;
@@ -469,9 +469,9 @@ class ExprVarNode : public ExprNode {
     ExprVarNode(const Expression* expr, const char* name, const ExprType& type)
         : ExprNode(expr, type), _name(name), _localVar(0), _var(0) {}
 
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
-    virtual int buildInterpreter(Interpreter* interpreter) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
+    virtual int buildInterpreter(Interpreter* interpreter) const override;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
     const char* name() const { return _name.c_str(); }
     const ExprLocalVar* localVar() const { return _localVar; }
     const ExprVarRef* var() const { return _var; }
@@ -487,9 +487,9 @@ class ExprNumNode : public ExprNode {
   public:
     ExprNumNode(const Expression* expr, double val) : ExprNode(expr), _val(val) {}
 
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
-    virtual int buildInterpreter(Interpreter* interpreter) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
+    virtual int buildInterpreter(Interpreter* interpreter) const override;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
     double value() const {
         return _val;
     };
@@ -503,9 +503,9 @@ class ExprStrNode : public ExprNode {
   public:
     ExprStrNode(const Expression* expr, const char* str);
 
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
-    virtual int buildInterpreter(Interpreter* interpreter) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
+    virtual int buildInterpreter(Interpreter* interpreter) const override;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
     const char* str() const { return _str.c_str(); }
     void str(const char* newstr) { _str = newstr; }
 
@@ -526,9 +526,9 @@ class ExprFuncNode : public ExprNode {
         }
     }
 
-    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder);
-    virtual int buildInterpreter(Interpreter* interpreter) const;
-    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY;
+    virtual ExprType prep(bool wantScalar, ExprVarEnvBuilder& envBuilder) override;
+    virtual int buildInterpreter(Interpreter* interpreter) const override;
+    virtual LLVM_VALUE codegen(LLVM_BUILDER) LLVM_BODY override;
 
     const char* name() const { return _name.c_str(); }
     bool checkArg(int argIndex, ExprType type, ExprVarEnvBuilder& envBuilder);

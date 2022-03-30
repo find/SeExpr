@@ -46,7 +46,7 @@ bool Expression::debugging = getenv("SE_EXPR_DEBUG") != 0;
 static Expression::EvaluationStrategy chooseDefaultEvaluationStrategy() {
     if (Expression::debugging) {
         std::cerr << "SeExpr2 Debug Mode Enabled " <<
-#if defined(WINDOWS)
+#if defined(_MSC_VER)
             _MSC_FULL_VER
 #else
             __VERSION__

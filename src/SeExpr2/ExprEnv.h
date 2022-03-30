@@ -80,7 +80,7 @@ class ExprLocalVarPhi : public ExprLocalVar {
 
     bool valid() const { return !_type.isError(); }
 
-    void setPhi(ExprLocalVar* phi) {
+    void setPhi(ExprLocalVar* phi) override {
         _phi = phi;
         _thenVar->setPhi(phi);
         _elseVar->setPhi(phi);

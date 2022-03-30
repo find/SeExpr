@@ -71,7 +71,7 @@
 #include <assert.h>
 
 // missing functions on Windows
-#ifdef WINDOWS
+#ifdef _MSC_VER
 #define snprintf sprintf_s
 #define strtok_r strtok_s
 typedef __int64 FilePos;

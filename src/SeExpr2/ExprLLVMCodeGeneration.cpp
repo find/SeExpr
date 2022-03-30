@@ -121,7 +121,7 @@ FunctionType *getSeExprFuncStandardLLVMType(ExprFuncStandard::FuncType sft, LLVM
 Type *createLLVMTyForSeExprType(LLVMContext &llvmContext, ExprType seType) {
     if (seType.isFP()) {
         int dim = seType.dim();
-        return dim == 1 ? Type::getDoubleTy(llvmContext) : VectorType::get(Type::getDoubleTy(llvmContext), dim);
+        return dim == 1 ? Type::getDoubleTy(llvmContext) : VectorType::get(Type::getDoubleTy(llvmContext), dim, false);
     } else if (seType.isString()) {
         // TODO: post c++11
         // static_assert(sizeof(char*) == 8, "Expect 64-bit pointers");
@@ -134,7 +134,7 @@ Type *createLLVMTyForSeExprType(LLVMContext &llvmContext, ExprType seType) {
 // Copy a scalar "val" to a vector of "dim" length
 LLVM_VALUE createVecVal(LLVM_BUILDER Builder, LLVM_VALUE val, unsigned dim) {
     LLVMContext &llvmContext = Builder.getContext();
-    VectorType *doubleVecTy = VectorType::get(Type::getDoubleTy(llvmContext), dim);
+    VectorType *doubleVecTy = VectorType::get(Type::getDoubleTy(llvmContext), dim, false);
     LLVM_VALUE vecVal = UndefValue::get(doubleVecTy);
     for (unsigned i = 0; i < dim; i++)
         vecVal = Builder.CreateInsertElement(vecVal, val, ConstantInt::get(Type::getInt32Ty(llvmContext), i));
@@ -147,7 +147,7 @@ LLVM_VALUE createVecVal(LLVM_BUILDER Builder, ArrayRef<LLVM_VALUE> val, const st
 
     LLVMContext &llvmContext = Builder.getContext();
     unsigned dim = val.size();
-    VectorType *elemType = VectorType::get(val[0]->getType(), dim);
+    VectorType *elemType = VectorType::get(val[0]->getType(), dim, false);
     LLVM_VALUE vecVal = UndefValue::get(elemType);
     for (unsigned i = 0; i < dim; i++)
         vecVal = Builder.CreateInsertElement(vecVal, val[i], ConstantInt::get(Type::getInt32Ty(llvmContext), i), name);
@@ -168,7 +168,7 @@ LLVM_VALUE createVecValFromAlloca(LLVM_BUILDER Builder, AllocaInst *destPtr, uns
     return createVecVal(Builder, vals);
 }
 
-LLVM_VALUE getFirstElement(LLVM_VALUE V, IRBuilder<> Builder) {
+LLVM_VALUE getFirstElement(LLVM_VALUE V, IRBuilder<>& Builder) {
     Type *VTy = V->getType();
     if (VTy->isDoubleTy()) return V;
 
@@ -184,10 +184,13 @@ LLVM_VALUE promoteToTy(LLVM_VALUE val, Type *destTy, LLVM_BUILDER Builder) {
 
     if (destTy->isDoubleTy()) return val;
 
-    return createVecVal(Builder, val, destTy->getVectorNumElements());
+    unsigned dim = 1;
+    if (destTy->isVectorTy())
+      dim = static_cast<VectorType*>(destTy)->getElementCount().getValue();
+    return createVecVal(Builder, val, dim);
 }
 
-AllocaInst *createAllocaInst(LLVM_BUILDER Builder, Type *ty, unsigned arraySize = 1, const std::string &varName = "") {
+AllocaInst *createAllocaInst(LLVM_BUILDER Builder, Type *ty, unsigned arraySize = 1, const StringRef &varName = "") {
     // move builder to first position of entry BB
     BasicBlock *entryBB = &llvm_getFunction(Builder)->getEntryBlock();
     IRBuilder<>::InsertPoint oldIP = Builder.saveIP();
@@ -205,7 +208,7 @@ AllocaInst *createAllocaInst(LLVM_BUILDER Builder, Type *ty, unsigned arraySize 
     return varPtr;
 }
 
-AllocaInst *createArray(LLVM_BUILDER Builder, Type *ty, unsigned arraySize, const std::string &varName = "") {
+AllocaInst *createArray(LLVM_BUILDER Builder, Type *ty, unsigned arraySize, const StringRef &varName = "") {
     // move builder to first position of entry BB
     BasicBlock *entryBB = &llvm_getFunction(Builder)->getEntryBlock();
     IRBuilder<>::InsertPoint oldIP = Builder.saveIP();
@@ -235,7 +238,7 @@ std::pair<LLVM_VALUE, LLVM_VALUE> promoteBinaryOperandsToAppropriateVector(LLVM_
 
     assert(target->getType()->isVectorTy());
 
-    unsigned dim = target->getType()->getVectorNumElements();
+    unsigned dim = static_cast<VectorType*>(target->getType())->getElementCount().getValue();
     LLVM_VALUE vecVal = createVecVal(Builder, toPromote, dim);
 
     if (op1Ty->isVectorTy())
@@ -255,10 +258,17 @@ LLVM_VALUE promoteOperand(LLVM_BUILDER Builder, const ExprType refType, LLVM_VAL
     }
 }
 
+unsigned getDim(Type* type) {
+  unsigned dim = 1;
+  if (type->isVectorTy())
+    dim = static_cast<VectorType*>(type)->getElementCount().getValue();
+  return dim;
+}
+
 AllocaInst *storeVectorToDoublePtr(LLVM_BUILDER Builder, LLVM_VALUE vecVal) {
     LLVMContext &llvmContext = Builder.getContext();
     AllocaInst *doublePtr =
-        createAllocaInst(Builder, Type::getDoubleTy(llvmContext), vecVal->getType()->getVectorNumElements());
+        createAllocaInst(Builder, Type::getDoubleTy(llvmContext), getDim(vecVal->getType()));
     for (unsigned i = 0; i < 3; ++i) {
         LLVM_VALUE idx = ConstantInt::get(Type::getInt32Ty(llvmContext), i);
         LLVM_VALUE val = Builder.CreateExtractElement(vecVal, idx);
@@ -287,7 +297,7 @@ std::vector<LLVM_VALUE> promoteArgs(std::vector<LLVM_VALUE> args,
     if (isTakeOnlyDoubleArg(seFuncType)) return args;
 
     LLVMContext &llvmContext = Builder.getContext();
-    VectorType *destTy = VectorType::get(Type::getDoubleTy(llvmContext), 3);
+    VectorType *destTy = VectorType::get(Type::getDoubleTy(llvmContext), 3, false);
     std::vector<LLVM_VALUE> ret;
     for (unsigned i = 0; i < args.size(); ++i) ret.push_back(promoteToTy(args[i], destTy, Builder));
     return ret;
@@ -350,13 +360,15 @@ LLVM_VALUE executeStandardFunction(LLVM_BUILDER Builder,
 
     if (isVarArg(seFuncType)) args = convertArgsToPointerAndLength(Builder, args, seFuncType);
 
-    if (isReturnVector(seFuncType) == false) return Builder.CreateCall(addrVal, args);
+    auto llvmFuncType = getSeExprFuncStandardLLVMType(seFuncType, llvmContext);
+
+    if (isReturnVector(seFuncType) == false) return Builder.CreateCall(llvmFuncType, addrVal, args);
 
     // TODO: assume standard function all use vector of length 3 as parameter
     //       or return type.
     AllocaInst *retPtr = createAllocaInst(Builder, Type::getDoubleTy(llvmContext), 3);
     args.insert(args.begin(), retPtr);
-    Builder.CreateCall(addrVal, replaceVecArgWithDoublePointer(Builder, args));
+    Builder.CreateCall(llvmFuncType, addrVal, replaceVecArgWithDoublePointer(Builder, args));
     return createVecValFromAlloca(Builder, retPtr, 3);
 }
 
@@ -380,13 +392,14 @@ LLVM_VALUE callPrintf(const ExprFuncNode *seFunc, LLVM_BUILDER Builder, Function
         LLVM_VALUE arg = seFunc->child(i)->codegen(Builder);
         if (arg->getType()->isVectorTy()) {
             AllocaInst *vecArray = storeVectorToDoublePtr(Builder, arg);
-            for (unsigned i = 0; i < arg->getType()->getVectorNumElements(); ++i) {
+            for (unsigned i = 0; i < getDim(arg->getType()); ++i) {
                 LLVM_VALUE elemPtr = Builder.CreateConstGEP1_32(vecArray, i);
                 args.push_back(Builder.CreateLoad(elemPtr));
             }
         } else
             args.push_back(arg);
     }
+
 
     Builder.CreateCall(callee, args);
     return ConstantFP::get(Type::getDoubleTy(llvmContext), 0.0);
@@ -876,7 +889,7 @@ LLVM_VALUE ExprFuncNode::codegen(LLVM_BUILDER Builder) LLVM_BODY {
     assert(maxVectorArgType->isVectorTy());
 
     std::vector<LLVM_VALUE> ret;
-    for (unsigned vecComponent = 0; vecComponent < maxVectorArgType->getVectorNumElements(); ++vecComponent) {
+    for (unsigned vecComponent = 0; vecComponent < getDim(maxVectorArgType); ++vecComponent) {
         LLVM_VALUE idx = ConstantInt::get(Type::getInt32Ty(llvmContext), vecComponent);
         std::vector<LLVM_VALUE> realArgs;
         // Break the function into multiple calls per component of the output
