@@ -79,8 +79,8 @@ class ImageSynthesizer {
 };
 
 ImageSynthesizer::ImageSynthesizer() {
-    _width = 256;
-    _height = 256;
+    _width = 512;
+    _height = 512;
 }
 
 unsigned char *ImageSynthesizer::evaluateExpression(const std::string &exprStr) {
@@ -132,15 +132,15 @@ ImageEditorDialog::ImageEditorDialog(QWidget *parent) : QDialog(parent) {
 
     // Image Previewer
     _imageLabel = new QLabel();
-    _imageLabel->setFixedSize(256, 256);
+    _imageLabel->setFixedSize(512, 512);
     _imageLabel->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
     // Locate logo image relative to location of the app itself
-    QString imageFile = QCoreApplication::applicationDirPath() + "/../share/doc/SeExpr2/seexprlogo.png";
+    QString imageFile = QCoreApplication::applicationDirPath() + "/seexprlogo.png";
     QImage image(imageFile);  // just a fun default
 
     QPixmap imagePixmap = QPixmap::fromImage(image);
-    imagePixmap = imagePixmap.scaled(256, 256, Qt::KeepAspectRatio);
+    imagePixmap = imagePixmap.scaled(512, 512, Qt::KeepAspectRatio);
     _imageLabel->setPixmap(imagePixmap);
     QWidget *imagePreviewWidget = new QWidget();
     QHBoxLayout *imagePreviewLayout = new QHBoxLayout(imagePreviewWidget);
@@ -152,7 +152,7 @@ ImageEditorDialog::ImageEditorDialog(QWidget *parent) : QDialog(parent) {
     ExprControlCollection *controls = new ExprControlCollection();
     QScrollArea *scrollArea = new QScrollArea();
     scrollArea->setMinimumHeight(100);
-    scrollArea->setFixedWidth(450);
+    //scrollArea->setFixedWidth(450);
     scrollArea->setWidgetResizable(true);
     scrollArea->setWidget(controls);
 
@@ -164,13 +164,7 @@ ImageEditorDialog::ImageEditorDialog(QWidget *parent) : QDialog(parent) {
 
     // Add user expressions, example expressions to browser list.
     browser->addUserExpressionPath("imageEditor");
-#ifdef IMAGE_EDITOR_ROOT
-    std::string exPathStr = IMAGE_EDITOR_ROOT;
-    exPathStr += "/share/SeExpr2/expressions";
-    browser->addPath("Examples", exPathStr);
-#else
-    browser->addPath("Examples", "./src/demos/imageEditor");
-#endif
+    browser->addPath("Examples", (QCoreApplication::applicationDirPath()+"/samples").toStdString());
     browser->update();
 
     // Create apply button and connect to image preview.
@@ -223,7 +217,7 @@ void ImageEditorDialog::applyExpression() {
         msgBox.setText("No expression entered in the editor.");
         msgBox.exec();
     } else {
-        QImage image(_imageSynthesizer->evaluateExpression(exprStr), 256, 256, QImage::Format_RGB32);
+        QImage image(_imageSynthesizer->evaluateExpression(exprStr), 512, 512, QImage::Format_RGB32);
         if (image.isNull()) {
             QMessageBox msgBox;
             msgBox.setText("Error evaluating expression to create preview image.");

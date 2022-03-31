@@ -142,6 +142,9 @@ slots:
     // Updates style
     void updateStyle();
 
+    // Get underlaying text editor
+    ExprTextEdit* getExprTextEditor() const { return exprTe; }
+
   private:
     ExprTextEdit* exprTe;
     ExprControlCollection* controls;
