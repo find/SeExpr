@@ -160,8 +160,8 @@ LLVM_VALUE createVecValFromAlloca(LLVM_BUILDER Builder, AllocaInst *destPtr, uns
     std::vector<LLVM_VALUE> vals;
 
     for (unsigned i = 0; i < vecLen; ++i) {
-        LLVM_VALUE ptr = destTy->isDoubleTy() ? Builder.CreateConstGEP1_32(destPtr, i)
-                                              : Builder.CreateConstGEP2_32(nullptr, destPtr, 0, i);
+        LLVM_VALUE ptr = destTy->isDoubleTy() ? Builder.CreateConstGEP1_32(destTy, destPtr, i)
+                                              : Builder.CreateConstGEP2_32(destTy->getPointerElementType(), destPtr, 0, i);
         vals.push_back(Builder.CreateLoad(ptr));
     }
 
@@ -272,7 +272,7 @@ AllocaInst *storeVectorToDoublePtr(LLVM_BUILDER Builder, LLVM_VALUE vecVal) {
     for (unsigned i = 0; i < 3; ++i) {
         LLVM_VALUE idx = ConstantInt::get(Type::getInt32Ty(llvmContext), i);
         LLVM_VALUE val = Builder.CreateExtractElement(vecVal, idx);
-        LLVM_VALUE ptr = Builder.CreateConstGEP1_32(doublePtr, i);
+        LLVM_VALUE ptr = Builder.CreateConstGEP1_32(Type::getDoubleTy(llvmContext), doublePtr, i);
         Builder.CreateStore(val, ptr);
     }
     return doublePtr;
@@ -328,7 +328,7 @@ std::vector<LLVM_VALUE> convertArgsToPointerAndLength(LLVM_BUILDER Builder,
     if (seFuncType == ExprFuncStandard::FUNCN) {
         AllocaInst *doublePtr = createAllocaInst(Builder, Type::getDoubleTy(llvmContext), numArgs);
         for (unsigned i = 0; i < numArgs; ++i) {
-            LLVM_VALUE ptr = Builder.CreateConstGEP1_32(doublePtr, i);
+            LLVM_VALUE ptr = Builder.CreateConstGEP1_32(Type::getDoubleTy(llvmContext), doublePtr, i);
             Builder.CreateStore(actualArgs[i], ptr);
         }
         args.push_back(doublePtr);
@@ -338,10 +338,10 @@ std::vector<LLVM_VALUE> convertArgsToPointerAndLength(LLVM_BUILDER Builder,
     AllocaInst *arrayPtr = createArray(Builder, ArrayType::get(Type::getDoubleTy(llvmContext), 3), numArgs);
     for (unsigned i = 0; i < numArgs; ++i) {
         LLVM_VALUE toInsert = actualArgs[i];
-        LLVM_VALUE subArrayPtr = Builder.CreateConstGEP2_32(nullptr, arrayPtr, 0, i);
+        LLVM_VALUE subArrayPtr = Builder.CreateConstGEP2_32(arrayPtr->getType()->getPointerElementType(), arrayPtr, 0, i);
         for (unsigned j = 0; j < 3; ++j) {
-            LLVM_VALUE destAddr = Builder.CreateConstGEP2_32(nullptr, subArrayPtr, 0, j);
-            LLVM_VALUE srcAddr = Builder.CreateConstGEP1_32(toInsert, j);
+            LLVM_VALUE destAddr = Builder.CreateConstGEP2_32(subArrayPtr->getType()->getPointerElementType(), subArrayPtr, 0, j);
+            LLVM_VALUE srcAddr = Builder.CreateConstGEP1_32(toInsert->getType()->getPointerElementType(), toInsert, j);
             Builder.CreateStore(Builder.CreateLoad(srcAddr), destAddr);
         }
     }
@@ -393,7 +393,7 @@ LLVM_VALUE callPrintf(const ExprFuncNode *seFunc, LLVM_BUILDER Builder, Function
         if (arg->getType()->isVectorTy()) {
             AllocaInst *vecArray = storeVectorToDoublePtr(Builder, arg);
             for (unsigned i = 0; i < getDim(arg->getType()); ++i) {
-                LLVM_VALUE elemPtr = Builder.CreateConstGEP1_32(vecArray, i);
+                LLVM_VALUE elemPtr = Builder.CreateConstGEP1_32(vecArray->getType()->getPointerElementType(), vecArray, i);
                 args.push_back(Builder.CreateLoad(elemPtr));
             }
         } else
@@ -451,10 +451,10 @@ LLVM_VALUE callCustomFunction(const ExprFuncNode *funcNode, LLVM_BUILDER Builder
     Builder.CreateStore(ConstantFP::get(doubleTy, nargs), fpArg);
 
     // fill opDataArgPtr
-    Builder.CreateStore(ConstantInt::get(int32Ty, 0), Builder.CreateConstGEP1_32(opDataArg, 0));
-    Builder.CreateStore(ConstantInt::get(int32Ty, 1), Builder.CreateConstGEP1_32(opDataArg, 1));
-    Builder.CreateStore(ConstantInt::get(int32Ty, 1), Builder.CreateConstGEP1_32(opDataArg, 2));
-    Builder.CreateStore(ConstantInt::get(int32Ty, 0), Builder.CreateConstGEP1_32(opDataArg, 3));
+    Builder.CreateStore(ConstantInt::get(int32Ty, 0), Builder.CreateConstGEP1_32(int32Ty, opDataArg, 0));
+    Builder.CreateStore(ConstantInt::get(int32Ty, 1), Builder.CreateConstGEP1_32(int32Ty, opDataArg, 1));
+    Builder.CreateStore(ConstantInt::get(int32Ty, 1), Builder.CreateConstGEP1_32(int32Ty, opDataArg, 2));
+    Builder.CreateStore(ConstantInt::get(int32Ty, 0), Builder.CreateConstGEP1_32(int32Ty, opDataArg, 3));
 
     // Load arguments into the pseudo interpreter data structure
     unsigned fpIdx = 1 + sizeOfRet;
@@ -464,12 +464,12 @@ LLVM_VALUE callCustomFunction(const ExprFuncNode *funcNode, LLVM_BUILDER Builder
         ExprType argType = funcNode->child(argIndex)->type();
         if (argType.isFP()) {
             // store the fpArgPtr indirection index
-            Builder.CreateStore(ConstantInt::get(int32Ty, fpIdx), Builder.CreateConstGEP1_32(opDataArg, opIndex));
+            Builder.CreateStore(ConstantInt::get(int32Ty, fpIdx), Builder.CreateConstGEP1_32(int32Ty, opDataArg, opIndex));
             if (argType.dim() > 1) {
                 for (int comp = 0; comp < argType.dim(); comp++) {
                     LLVM_VALUE compIndex = ConstantInt::get(int32Ty, comp);
                     LLVM_VALUE val = Builder.CreateExtractElement(args[argIndex], compIndex);
-                    LLVM_VALUE fpArgPtr = Builder.CreateConstGEP1_32(fpArg, fpIdx + comp);
+                    LLVM_VALUE fpArgPtr = Builder.CreateConstGEP1_32(doubleTy, fpArg, fpIdx + comp);
                     Builder.CreateStore(val, fpArgPtr);
                 }
                 fpIdx += argType.dim();
@@ -479,19 +479,19 @@ LLVM_VALUE callCustomFunction(const ExprFuncNode *funcNode, LLVM_BUILDER Builder
                 if (promote) {
                     LLVM_VALUE val = args[argIndex];
                     for (int comp = 0; comp < promote; comp++) {
-                        LLVM_VALUE fpArgPtr = Builder.CreateConstGEP1_32(fpArg, fpIdx + comp);
+                        LLVM_VALUE fpArgPtr = Builder.CreateConstGEP1_32(doubleTy, fpArg, fpIdx + comp);
                         Builder.CreateStore(val, fpArgPtr);
                     }
                     fpIdx += promote;
                 } else {
-                    Builder.CreateStore(args[argIndex], Builder.CreateConstGEP1_32(fpArg, fpIdx));
+                    Builder.CreateStore(args[argIndex], Builder.CreateConstGEP1_32(doubleTy, fpArg, fpIdx));
                     fpIdx++;
                 }
             }
         } else if (argType.isString()) {
             // store the strArgPtr indirection index
-            Builder.CreateStore(ConstantInt::get(int32Ty, strIdx), Builder.CreateConstGEP1_32(opDataArg, opIndex));
-            Builder.CreateStore(args[argIndex], Builder.CreateConstGEP1_32(strArg, strIdx));
+            Builder.CreateStore(ConstantInt::get(int32Ty, strIdx), Builder.CreateConstGEP1_32(int32Ty, opDataArg, opIndex));
+            Builder.CreateStore(args[argIndex], Builder.CreateConstGEP1_32(int8PtrTy, strArg, strIdx));
             strIdx++;
         }
     }
@@ -519,17 +519,17 @@ LLVM_VALUE callCustomFunction(const ExprFuncNode *funcNode, LLVM_BUILDER Builder
     int resultOffset = 1;
     if (funcNode->type().isFP()) {
         if (sizeOfRet == 1) {
-            return Builder.CreateLoad(Builder.CreateConstGEP1_32(fpArg, resultOffset));
+            return Builder.CreateLoad(Builder.CreateConstGEP1_32(doubleTy, fpArg, resultOffset));
         } else if (sizeOfRet > 1) {
             std::vector<LLVM_VALUE> resultArray;
             for (unsigned int comp = 0; comp < sizeOfRet; comp++) {
-                LLVM_VALUE ptr = Builder.CreateConstGEP1_32(fpArg, resultOffset + comp);  // skip nargs
+                LLVM_VALUE ptr = Builder.CreateConstGEP1_32(doubleTy, fpArg, resultOffset + comp);  // skip nargs
                 resultArray.push_back(Builder.CreateLoad(ptr));
             }
             return createVecVal(Builder, resultArray);
         }
     } else {
-        return Builder.CreateLoad(Builder.CreateConstGEP1_32(strArg, 1));
+        return Builder.CreateLoad(Builder.CreateConstGEP1_32(int8PtrTy, strArg, 1));
     }
 
     assert(false);
@@ -639,7 +639,7 @@ LLVM_VALUE ExprBinaryOpNode::codegen(LLVM_BUILDER Builder) LLVM_BODY {
 
         // concatenate operand strings into output string
         Builder.CreateCall(strcat, { alloc, op1 });                         // strcat(alloc, op1);
-        LLVM_VALUE newAlloc = Builder.CreateGEP(nullptr, alloc, len1);      // newAlloc = alloc + len1
+        LLVM_VALUE newAlloc = Builder.CreateGEP(alloc->getType()->getPointerElementType(), alloc, len1);      // newAlloc = alloc + len1
         Builder.CreateCall(strcat, { newAlloc, op2 });                      // strcat(alloc, op2);
 
         // store the address in the node's _out member so that it will be
@@ -898,7 +898,7 @@ LLVM_VALUE ExprFuncNode::codegen(LLVM_BUILDER Builder) LLVM_BODY {
             LLVM_VALUE realArg = args[argIndex];
             if (argumentIsVectorAndNeedsDistribution[argIndex]) {
                 if (args[argIndex]->getType()->isPointerTy())
-                    realArg = Builder.CreateLoad(Builder.CreateConstGEP2_32(nullptr, args[argIndex], 0, vecComponent));
+                    realArg = Builder.CreateLoad(Builder.CreateConstGEP2_32(args[argIndex]->getType()->getPointerElementType(), args[argIndex], 0, vecComponent));
                 else
                     realArg = Builder.CreateExtractElement(args[argIndex], idx);
             }

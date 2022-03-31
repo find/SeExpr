@@ -139,8 +139,8 @@ class ExprFuncStandard : public ExprFuncX {
   public:
     ExprFuncStandard() : ExprFuncX(true) {}
 
-    virtual ExprType prep(ExprFuncNode* node, bool scalarWanted, ExprVarEnvBuilder& envBuilder) const;
-    virtual int buildInterpreter(const ExprFuncNode* node, Interpreter* interpreter) const;
+    virtual ExprType prep(ExprFuncNode* node, bool scalarWanted, ExprVarEnvBuilder& envBuilder) const override;
+    virtual int buildInterpreter(const ExprFuncNode* node, Interpreter* interpreter) const override;
     void* getFuncPointer() const { return _func; }
     FuncType getFuncType() const { return _funcType; }
 

@@ -106,9 +106,9 @@ class ExprFuncSimple : public ExprFuncX {
         // std::stack<int>& callStack;
     };
 
-    virtual int buildInterpreter(const ExprFuncNode* node, Interpreter* interpreter) const;
+    virtual int buildInterpreter(const ExprFuncNode* node, Interpreter* interpreter) const override;
 
-    virtual ExprType prep(ExprFuncNode* node, bool scalarWanted, ExprVarEnvBuilder& envBuilder) const = 0;
+    virtual ExprType prep(ExprFuncNode* node, bool scalarWanted, ExprVarEnvBuilder& envBuilder) const override = 0;
     virtual ExprFuncNode::Data* evalConstant(const ExprFuncNode* node, ArgHandle args) const = 0;
     virtual void eval(ArgHandle args) = 0;
 
@@ -120,9 +120,9 @@ class ExprFuncLocal : public ExprFuncX {
     ExprFuncLocal() : ExprFuncX(true) {}
 
     /** prep the expression by doing all type checking argument checking, etc. */
-    virtual ExprType prep(ExprFuncNode* node, bool scalarWanted, ExprVarEnvBuilder& envBuilder) const;
+    virtual ExprType prep(ExprFuncNode* node, bool scalarWanted, ExprVarEnvBuilder& envBuilder) const override;
     //! Build an interpreter to evaluate the expression
-    virtual int buildInterpreter(const ExprFuncNode* node, Interpreter* interpreter) const;
+    virtual int buildInterpreter(const ExprFuncNode* node, Interpreter* interpreter) const override;
 };
 }
 

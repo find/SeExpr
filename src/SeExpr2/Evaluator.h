@@ -199,16 +199,20 @@ class LLVMEvaluator {
             if (desireFP) {
                 if (dimGenerated > 1) {
                     Value *newLastVal = promoteToDim(lastVal, dimDesired, Builder);
-                    assert(newLastVal->getType()->getVectorNumElements() >= dimDesired);
+                    unsigned dim = 1;
+                    auto* type = newLastVal->getType();
+                    if (type->isVectorTy())
+                      dim = static_cast<VectorType*>(type)->getElementCount().getValue();
+                    assert(dim >= dimDesired);
                     for (unsigned i = 0; i < dimDesired; ++i) {
                         Value *idx = ConstantInt::get(Type::getInt64Ty(*_llvmContext), i);
                         Value *val = Builder.CreateExtractElement(newLastVal, idx);
-                        Value *ptr = Builder.CreateInBoundsGEP(firstArg, idx);
+                        Value *ptr = Builder.CreateInBoundsGEP(val->getType(), firstArg, idx);
                         Builder.CreateStore(val, ptr);
                     }
                 } else if (dimGenerated == 1) {
                     for (unsigned i = 0; i < dimDesired; ++i) {
-                        Value *ptr = Builder.CreateConstInBoundsGEP1_32(nullptr, firstArg, i);
+                        Value *ptr = Builder.CreateConstInBoundsGEP1_32(lastVal->getType(), firstArg, i);
                         Builder.CreateStore(lastVal, ptr);
                     }
                 } else {
@@ -269,7 +273,7 @@ class LLVMEvaluator {
             Builder.CreateStore(outputVarBlockOffsetArg, outputVarBlockOffsetVar);
 
             // Set output pointer
-            Value *outputBasePtrPtr = Builder.CreateGEP(nullptr, Builder.CreateLoad(varBlockTPtrPtrVar), outputVarBlockOffsetArg, "outputBasePtrPtr");
+            Value *outputBasePtrPtr = Builder.CreateGEP(desireFP ? doublePtrTy : i8PtrPtrTy, Builder.CreateLoad(varBlockTPtrPtrVar), outputVarBlockOffsetArg, "outputBasePtrPtr");
             Value *outputBasePtr = Builder.CreateLoad(outputBasePtrPtr, "outputBasePtr");
             Builder.CreateStore(Builder.CreateLoad(rangeStartVar), indexVar);
 
@@ -279,7 +283,7 @@ class LLVMEvaluator {
             Builder.CreateCondBr(cond, loopRepeatBlock, loopEndBlock);
 
             Builder.SetInsertPoint(loopRepeatBlock);
-            Value *myOutputPtr = Builder.CreateGEP(nullptr, outputBasePtr, Builder.CreateMul(dimValue, Builder.CreateLoad(indexVar)));
+            Value *myOutputPtr = Builder.CreateGEP(desireFP ? Type::getDoubleTy(*_llvmContext) : i8PtrTy, outputBasePtr, Builder.CreateMul(dimValue, Builder.CreateLoad(indexVar)));
             Builder.CreateCall(F, {myOutputPtr, Builder.CreateLoad(varBlockDoublePtrPtrVar), Builder.CreateLoad(indexVar)});
 
             Builder.CreateBr(loopIncBlock);
