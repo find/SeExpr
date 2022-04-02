@@ -1,3 +1,7 @@
+diff with the original repo:
+
+* compiles and runs with LLVM 13.0 + mingw64
+
 ===================================================================
 
   For info on using new v3 features and porting your code, see:
